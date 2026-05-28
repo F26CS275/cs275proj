@@ -1240,11 +1240,6 @@ MonoBehaviour:
   endpointTimeoutSeconds: 180
   requestIntervalSeconds: 1
   commandTimeoutSeconds: 2
-  ollamaUrl: http://localhost:11434/api/chat
-  ollamaModel: qwen2.5vl:7b
-  testOllamaConnectionOnStart: 1
-  ollamaTemperature: 0.05
-  ollamaNumPredict: 96
   visionCamera: {fileID: 993435935}
   includeImage: 1
   imageWidth: 512

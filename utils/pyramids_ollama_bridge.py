@@ -1,8 +1,8 @@
 """Local Ollama bridge for the Pyramids VLM controller demo.
 
-Unity talks to this server using the same simple Remote planner contract as the
-mock server. The bridge then calls Ollama's /api/chat endpoint with the current
-camera JPEG and returns the model's structured action JSON back to Unity.
+Unity talks to this server using the Remote planner contract. The bridge then
+calls Ollama's /api/chat endpoint with the current camera JPEG and returns the
+model's structured action JSON back to Unity.
 """
 
 from __future__ import annotations

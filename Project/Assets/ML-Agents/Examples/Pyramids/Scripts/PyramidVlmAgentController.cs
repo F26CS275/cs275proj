@@ -12,29 +12,20 @@ public class PyramidVlmAgentController : MonoBehaviour
 {
     public enum PlannerMode
     {
-        Disabled,
-        Mock,
-        Remote,
-        Ollama
+        Disabled = 0,
+        Remote = 2
     }
 
     [Header("Planner")]
-    public PlannerMode plannerMode = PlannerMode.Mock;
+    public PlannerMode plannerMode = PlannerMode.Remote;
 
     [TextArea(2, 4)]
-    public string instruction = "Press the switch, then reach the gold brick on the spawned pyramid.";
+    public string instruction = "Press the switch, then reach the gold brick on the spawned pyramid. If none of the goals are in view, go to the next room in view.";
 
-    public string endpointUrl = "http://localhost:7071/pyramids-vlm";
+    public string endpointUrl = "http://127.0.0.1:7073/pyramids-ollama";
     public int endpointTimeoutSeconds = 180;
     public float requestIntervalSeconds = 2f;
     public float commandTimeoutSeconds = 2f;
-
-    [Header("Ollama")]
-    public string ollamaUrl = "http://127.0.0.1:11434/api/chat";
-    public string ollamaModel = "qwen2.5vl:7b";
-    public bool testOllamaConnectionOnStart = true;
-    public float ollamaTemperature;
-    public int ollamaNumPredict = 256;
 
     [Header("Camera")]
     [FormerlySerializedAs("mapCamera")]
@@ -59,8 +50,6 @@ public class PyramidVlmAgentController : MonoBehaviour
     Coroutine m_PlannerLoop;
     int m_LastAction;
     float m_LastActionExpiresAt;
-    int m_MockStep;
-    bool m_HasTestedOllamaConnection;
 
     public bool TryGetDiscreteAction(out int action)
     {
@@ -105,22 +94,9 @@ public class PyramidVlmAgentController : MonoBehaviour
 
         while (enabled)
         {
-            switch (plannerMode)
+            if (plannerMode == PlannerMode.Remote)
             {
-                case PlannerMode.Mock:
-                    ApplyMockDecision();
-                    break;
-                case PlannerMode.Remote:
-                    yield return RequestRemoteDecision();
-                    break;
-                case PlannerMode.Ollama:
-                    if (testOllamaConnectionOnStart && !m_HasTestedOllamaConnection)
-                    {
-                        m_HasTestedOllamaConnection = true;
-                        yield return TestOllamaConnection();
-                    }
-                    yield return RequestOllamaDecision();
-                    break;
+                yield return RequestRemoteDecision();
             }
 
             yield return wait;
@@ -171,128 +147,6 @@ public class PyramidVlmAgentController : MonoBehaviour
         }
 
         ApplyPlannerResponse(response);
-    }
-
-    IEnumerator TestOllamaConnection()
-    {
-        var tagsUrl = BuildOllamaTagsUrl();
-        if (string.IsNullOrEmpty(tagsUrl))
-        {
-            yield break;
-        }
-
-        var request = UnityWebRequest.Get(tagsUrl);
-        request.timeout = Mathf.Min(endpointTimeoutSeconds, 10);
-
-        yield return request.SendWebRequest();
-
-        if (RequestFailed(request))
-        {
-            LogRequestFailure("Ollama tags probe", request);
-            request.Dispose();
-            yield break;
-        }
-
-        if (logPlannerResponses)
-        {
-            Debug.Log($"Ollama tags probe succeeded at {tagsUrl}: {request.downloadHandler.text}");
-        }
-
-        request.Dispose();
-    }
-
-    IEnumerator RequestOllamaDecision()
-    {
-        if (string.IsNullOrEmpty(ollamaUrl))
-        {
-            Debug.LogWarning("Pyramid VLM planner is in Ollama mode but no ollamaUrl is configured.");
-            yield break;
-        }
-
-        if (string.IsNullOrEmpty(ollamaModel))
-        {
-            Debug.LogWarning("Pyramid VLM planner is in Ollama mode but no ollamaModel is configured.");
-            yield break;
-        }
-
-        var imageBase64 = CaptureCameraJpegBase64();
-        var userMessage = new OllamaMessage
-        {
-            role = "user",
-            content = BuildOllamaPrompt(),
-            images = string.IsNullOrEmpty(imageBase64) ? new string[0] : new[] { imageBase64 }
-        };
-        var requestPayload = new OllamaChatRequest
-        {
-            model = ollamaModel,
-            messages = new[] { userMessage },
-            stream = false,
-            format = "json",
-            options = new OllamaOptions
-            {
-                temperature = ollamaTemperature,
-                num_predict = ollamaNumPredict
-            }
-        };
-
-        var requestJson = JsonUtility.ToJson(requestPayload);
-        var requestBytes = Encoding.UTF8.GetBytes(requestJson);
-        var request = new UnityWebRequest(ollamaUrl, "POST")
-        {
-            uploadHandler = new UploadHandlerRaw(requestBytes),
-            downloadHandler = new DownloadHandlerBuffer(),
-            timeout = endpointTimeoutSeconds
-        };
-        request.SetRequestHeader("Content-Type", "application/json");
-
-        yield return request.SendWebRequest();
-
-        if (RequestFailed(request))
-        {
-            LogRequestFailure("Ollama planner", request);
-            request.Dispose();
-            yield break;
-        }
-
-        var responseText = request.downloadHandler.text;
-        request.Dispose();
-
-        if (string.IsNullOrEmpty(responseText))
-        {
-            Debug.LogWarning("Ollama planner returned an empty response.");
-            yield break;
-        }
-
-        OllamaChatResponse ollamaResponse;
-        try
-        {
-            ollamaResponse = JsonUtility.FromJson<OllamaChatResponse>(responseText);
-        }
-        catch (ArgumentException)
-        {
-            Debug.LogWarning($"Ollama planner returned invalid JSON: {responseText}");
-            yield break;
-        }
-
-        if (ollamaResponse == null || ollamaResponse.message == null || string.IsNullOrEmpty(ollamaResponse.message.content))
-        {
-            if (ollamaResponse != null && !string.IsNullOrEmpty(ollamaResponse.error))
-            {
-                Debug.LogWarning($"Ollama planner returned an error: {ollamaResponse.error}");
-                yield break;
-            }
-
-            Debug.LogWarning($"Ollama planner returned no message content: {responseText}");
-            yield break;
-        }
-
-        if (!TryParsePlannerResponse(ollamaResponse.message.content, out var plannerResponse))
-        {
-            Debug.LogWarning($"Ollama planner message was not valid action JSON: {ollamaResponse.message.content}");
-            yield break;
-        }
-
-        ApplyPlannerResponse(plannerResponse);
     }
 
     PyramidVlmRequest BuildRequestPayload()
@@ -349,50 +203,6 @@ public class PyramidVlmAgentController : MonoBehaviour
             RenderTexture.ReleaseTemporary(renderTexture);
             Destroy(texture);
         }
-    }
-
-    string BuildOllamaPrompt()
-    {
-        var switchText = includeDebugState && m_Switch != null
-            ? $"Switch state from environment: {(m_Switch.GetState() ? "on" : "off")}.\n"
-            : "";
-
-        return
-            "You control a Unity ML-Agents Pyramids agent from its front-facing camera.\n" +
-            $"Instruction: {instruction}\n" +
-            switchText +
-            "The agent can choose exactly one low-level action: none, move_forward, move_backward, turn_left, or turn_right.\n" +
-            "Object appearance hints: the switch is a small low button or pad, often red/off or green/on and easy to miss near the floor. " +
-            "White or light gray stacks of blocks can be pyramids or stone pyramid decoys; do not ignore white pyramid-like block stacks. " +
-            "The goal is a yellow/gold brick on the spawned pyramid. " +
-            "Use the image as the agent's egocentric view. First describe visible corridors, walls, switches, white/gray pyramids, and yellow/gold bricks. " +
-            "If the relevant target is centered and reachable, move_forward. " +
-            "If a relevant target is clearly off to one side, turn toward it. " +
-            "If no switch, pyramid, or gold brick is visible, actively explore corridors. Default to move_forward through an open corridor or doorway. " +
-            "Only choose turn_left or turn_right during search if the forward path is visibly blocked by a wall, close obstacle, or dead end, or if an open corridor/target is clearly to that side. " +
-            "Do not choose none while searching or navigating. Use none only if the task is complete or waiting is truly the only safe action. " +
-            "The task sequence is to find and press the switch, then find the spawned pyramid/gold brick and reach the gold brick.\n" +
-            "Return only valid JSON with this shape: " +
-            "{\"command\":\"seek_switch|seek_goal|search|avoid_obstacle\",\"low_level_action\":\"none|move_forward|move_backward|turn_left|turn_right\",\"confidence\":0.0,\"scene_description\":\"brief description of what is visible\",\"reasoning\":\"brief reason for the chosen action\",\"rationale\":\"short reason\",\"command_ttl_seconds\":0.75}";
-    }
-
-    string BuildOllamaTagsUrl()
-    {
-        const string chatPath = "/api/chat";
-        var trimmedUrl = ollamaUrl.TrimEnd('/');
-
-        if (trimmedUrl.EndsWith(chatPath, StringComparison.OrdinalIgnoreCase))
-        {
-            return trimmedUrl.Substring(0, trimmedUrl.Length - chatPath.Length) + "/api/tags";
-        }
-
-        var apiIndex = trimmedUrl.IndexOf("/api/", StringComparison.OrdinalIgnoreCase);
-        if (apiIndex >= 0)
-        {
-            return trimmedUrl.Substring(0, apiIndex) + "/api/tags";
-        }
-
-        return "";
     }
 
     void ApplyPlannerResponse(PyramidVlmResponse response)
@@ -502,7 +312,7 @@ public class PyramidVlmAgentController : MonoBehaviour
             return false;
         }
 
-        var normalized = command.Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
+        var normalized = NormalizeName(command);
         return normalized == "search" ||
             normalized == "seek_switch" ||
             normalized == "seek_goal" ||
@@ -517,8 +327,7 @@ public class PyramidVlmAgentController : MonoBehaviour
             return false;
         }
 
-        var normalized = command.Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
-        return normalized == "avoid_obstacle";
+        return NormalizeName(command) == "avoid_obstacle";
     }
 
     bool IsNoOpActionName(string actionName)
@@ -528,7 +337,7 @@ public class PyramidVlmAgentController : MonoBehaviour
             return true;
         }
 
-        var normalized = actionName.Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
+        var normalized = NormalizeName(actionName);
         return normalized == "none" ||
             normalized == "no_op" ||
             normalized == "noop" ||
@@ -544,7 +353,7 @@ public class PyramidVlmAgentController : MonoBehaviour
             return false;
         }
 
-        var normalized = actionName.Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
+        var normalized = NormalizeName(actionName);
         return normalized == "turn_left" ||
             normalized == "left" ||
             normalized == "rotate_left" ||
@@ -607,17 +416,9 @@ public class PyramidVlmAgentController : MonoBehaviour
         return false;
     }
 
-    void ApplyMockDecision()
+    string NormalizeName(string value)
     {
-        var switchIsOn = m_Switch != null && m_Switch.GetState();
-        var action = switchIsOn
-            ? ((m_MockStep % 7 == 0) ? 4 : 1)
-            : ((m_MockStep % 5 == 0) ? 3 : 1);
-        var command = switchIsOn ? "mock_seek_goal" : "mock_seek_switch";
-        var rationale = "Mock mode exercises the action bridge. Use Remote mode for a real VLM planner.";
-
-        m_MockStep++;
-        ApplyDecision(action, command, rationale, commandTimeoutSeconds);
+        return value.Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
     }
 
     void ApplyDecision(int discreteAction, string command, string rationale, float ttlSeconds)
@@ -642,7 +443,7 @@ public class PyramidVlmAgentController : MonoBehaviour
             return false;
         }
 
-        var normalized = actionName.Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
+        var normalized = NormalizeName(actionName);
         switch (normalized)
         {
             case "none":
@@ -734,40 +535,5 @@ public class PyramidVlmAgentController : MonoBehaviour
         public string reasoning;
         public string rationale;
         public float command_ttl_seconds;
-    }
-
-    [Serializable]
-    class OllamaChatRequest
-    {
-        public string model;
-        public OllamaMessage[] messages;
-        public bool stream;
-        public string format;
-        public OllamaOptions options;
-    }
-
-    [Serializable]
-    class OllamaMessage
-    {
-        public string role;
-        public string content;
-        public string[] images;
-    }
-
-    [Serializable]
-    class OllamaOptions
-    {
-        public float temperature;
-        public int num_predict;
-    }
-
-    [Serializable]
-    class OllamaChatResponse
-    {
-        public string model;
-        public OllamaMessage message;
-        public bool done;
-        public string done_reason;
-        public string error;
     }
 }

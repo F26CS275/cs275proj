@@ -31,6 +31,15 @@ public class PyramidSwitch : MonoBehaviour
         myButton.GetComponent<Renderer>().material = offMaterial;
     }
 
+    // Curriculum hook: mark the switch as already pressed without triggering pyramid spawn.
+    // Used when pyramid_pre_spawned > 0 — pyramid is created externally in PyramidAgent.
+    public void PressSwitch()
+    {
+        m_State = true;
+        tag = "switchOn";
+        myButton.GetComponent<Renderer>().material = onMaterial;
+    }
+
     void OnCollisionEnter(Collision other)
     {
         if (other.gameObject.CompareTag("agent") && m_State == false)

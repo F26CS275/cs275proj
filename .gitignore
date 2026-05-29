@@ -1,0 +1,31 @@
+# Cloned third-party Unity ML-Agents repo (~1 GB). Re-clone with:
+#   git clone --branch release_21 https://github.com/Unity-Technologies/ml-agents.git vendor/ml-agents
+vendor/
+
+# Training run outputs (checkpoints, tensorboard logs — multi-GB)
+results/
+
+# macOS metadata
+.DS_Store
+**/.DS_Store
+
+# Unity-generated (only relevant if anyone copies this repo into a Unity project)
+Library/
+Temp/
+Obj/
+Logs/
+Build/
+Builds/
+UserSettings/
+*.csproj
+*.sln
+.vs/
+
+# Python / IDE
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.vscode/
+.idea/

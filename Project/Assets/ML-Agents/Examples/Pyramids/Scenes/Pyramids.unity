@@ -827,7 +827,7 @@ Transform:
   m_GameObject: {fileID: 993435931}
   serializedVersion: 2
   m_LocalRotation: {x: 0.06975647, y: -0, z: -0, w: 0.9975641}
-  m_LocalPosition: {x: 0, y: 1.2000002, z: 0.55}
+  m_LocalPosition: {x: 0, y: 3, z: 0.55}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -848,9 +848,9 @@ MonoBehaviour:
   cameraMode: 0
   agent: {fileID: 1534969855}
   area: {fileID: 0}
-  agentLocalPosition: {x: 0, y: 1.2, z: 0.55}
+  agentLocalPosition: {x: 0, y: 3, z: 0.55}
   agentLocalEulerAngles: {x: 8, y: 0, z: 0}
-  fieldOfView: 75
+  fieldOfView: 100
   mapCenterOffset: {x: 0, y: 0, z: 0}
   height: 45
   orthographicSize: 22
@@ -895,7 +895,7 @@ Camera:
     height: 1
   near clip plane: 0.1
   far clip plane: 80
-  field of view: 75
+  field of view: 100
   orthographic: 0
   orthographic size: 22
   m_Depth: 0
@@ -1236,7 +1236,7 @@ MonoBehaviour:
   plannerMode: 2
   instruction: 'Press the switch, then reach the gold brick on the spawned pyramid.
     If none of the goals are in view, go to the next room in view. '
-  endpointUrl: http://127.0.0.1:7073/pyramids-ollama
+  endpointUrl: http://127.0.0.1:7072/pyramids-ollama
   endpointTimeoutSeconds: 180
   requestIntervalSeconds: 1
   commandTimeoutSeconds: 2

@@ -15,9 +15,9 @@ public class PyramidVlmMapCamera : MonoBehaviour
     public PyramidArea area;
 
     [Header("Agent Forward")]
-    public Vector3 agentLocalPosition = new Vector3(0f, 1.2f, 0.55f);
+    public Vector3 agentLocalPosition = new Vector3(0f, 3.0f, 0.55f);
     public Vector3 agentLocalEulerAngles = new Vector3(8f, 0f, 0f);
-    public float fieldOfView = 75f;
+    public float fieldOfView = 100f;
 
     [Header("Overhead Map")]
     public Vector3 mapCenterOffset;

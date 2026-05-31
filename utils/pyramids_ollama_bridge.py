@@ -23,7 +23,7 @@ Instruction: {instruction}
 {switch_state}
 The agent can choose exactly one low-level action: none, move_forward, move_backward, turn_left, or turn_right.
 Object appearance hints:
-- The switch is a small low button/pad, often with a red/off or green/on top. It may be easy to miss near the floor.
+- The switch is a small low button/pad, often with a yellow/off or green/on top. It may be easy to miss near the floor.
 - White or light gray stacks of blocks can be pyramids or stone pyramid decoys. Do not ignore white pyramid-like block stacks.
 - The goal is a yellow/gold brick on the spawned pyramid.
 Use the image as the agent's egocentric view. First describe visible corridors, walls, switches, white/gray pyramids, and yellow/gold bricks.
@@ -32,6 +32,7 @@ If a relevant target is clearly off to one side, turn toward it.
 If no switch, pyramid, or gold brick is visible, actively explore corridors. Default to move_forward through an open corridor or doorway.
 Only choose turn_left or turn_right during search if the forward path is visibly blocked by a wall, close obstacle, or dead end, or if an open corridor/target is clearly to that side.
 Do not choose none while searching or navigating. Use none only if the task is complete or waiting is truly the only safe action.
+Remember previous actions and observations in order to build a mental map of the environment and where the switch, pyramids, and gold brick are likely to be. This should inform your decisions on new areas to explore and when to commit to a direction change versus pushing forward.
 The task sequence is to find and press the switch, then find the spawned pyramid/gold brick and reach the gold brick.
 Return only valid JSON with this shape:
 {{"command":"seek_switch|seek_goal|search|avoid_obstacle","low_level_action":"none|move_forward|move_backward|turn_left|turn_right","confidence":0.0,"scene_description":"brief description of what is visible","reasoning":"brief reason for the chosen action","rationale":"short reason","command_ttl_seconds":0.75}}

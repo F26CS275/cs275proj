@@ -12,6 +12,7 @@ public class PyramidAgent : Agent
     PyramidArea m_MyArea;
     Rigidbody m_AgentRb;
     PyramidSwitch m_SwitchLogic;
+    PyramidVlmAgentController m_VlmController;
     public GameObject areaSwitch;
     public bool useVectorObs;
 
@@ -20,6 +21,7 @@ public class PyramidAgent : Agent
         m_AgentRb = GetComponent<Rigidbody>();
         m_MyArea = area.GetComponent<PyramidArea>();
         m_SwitchLogic = areaSwitch.GetComponent<PyramidSwitch>();
+        m_VlmController = GetComponent<PyramidVlmAgentController>();
     }
 
     public override void CollectObservations(VectorSensor sensor)
@@ -33,10 +35,14 @@ public class PyramidAgent : Agent
 
     public void MoveAgent(ActionSegment<int> act)
     {
+        ApplyDiscreteAction(act[0]);
+    }
+
+    public void ApplyDiscreteAction(int action)
+    {
         var dirToGo = Vector3.zero;
         var rotateDir = Vector3.zero;
 
-        var action = act[0];
         switch (action)
         {
             case 1:
@@ -66,6 +72,14 @@ public class PyramidAgent : Agent
     public override void Heuristic(in ActionBuffers actionsOut)
     {
         var discreteActionsOut = actionsOut.DiscreteActions;
+        discreteActionsOut[0] = 0;
+
+        if (m_VlmController != null && m_VlmController.TryGetDiscreteAction(out var vlmAction))
+        {
+            discreteActionsOut[0] = vlmAction;
+            return;
+        }
+
         if (Input.GetKey(KeyCode.D))
         {
             discreteActionsOut[0] = 3;

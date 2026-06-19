@@ -1,10 +1,3 @@
-"""Local Ollama bridge for the Pyramids VLM controller demo.
-
-Unity talks to this server using the Remote planner contract. The bridge then
-calls Ollama's /api/chat endpoint with the current camera JPEG and returns the
-model's structured action JSON back to Unity.
-"""
-
 from __future__ import annotations
 
 from collections import deque
@@ -316,6 +309,7 @@ def build_event(payload: dict, response: dict | None, error: dict | None, durati
         "error": error,
     }
 
+## DASHBOARD FOR LIVE MONITORING -- NOT PART OF BRIDGE LOGIC
 
 def build_dashboard_html() -> str:
     title = "Pyramids VLM Conversation"
